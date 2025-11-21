@@ -1,0 +1,25 @@
+{
+  "note": "This is a placeholder file. Actual outputs will be generated after terraform plan is run.",
+  "expected_outputs": {
+    "vpc_id": "vpc-xxxxxxxxx",
+    "rds_endpoint": "ai-ca-agent-staging-db.xxxxx.us-east-1.rds.amazonaws.com",
+    "rds_secret_arn": "arn:aws:secretsmanager:us-east-1:xxxxx:secret:ai-ca-agent-staging-rds-credentials-xxxxx",
+    "s3_bucket_names": {
+      "recordings": "ai-ca-agent-staging-recordings-us-east-1",
+      "transcripts": "ai-ca-agent-staging-transcripts-us-east-1",
+      "static": "ai-ca-agent-staging-static-us-east-1"
+    },
+    "ecs_cluster_name": "ai-ca-agent-staging-cluster",
+    "ecr_repo_urls": {
+      "backend": "xxxxx.dkr.ecr.us-east-1.amazonaws.com/ai-ca-agent-staging/backend",
+      "worker": "xxxxx.dkr.ecr.us-east-1.amazonaws.com/ai-ca-agent-staging/worker"
+    },
+    "api_gateway_url": "https://xxxxx.execute-api.us-east-1.amazonaws.com/staging",
+    "ses_domain_dns_records": {
+      "name": "_amazonses.www.soyl.cloud",
+      "type": "TXT",
+      "value": "VERIFICATION_TOKEN_HERE"
+    }
+  }
+}
+

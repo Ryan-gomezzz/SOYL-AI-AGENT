@@ -1,0 +1,30 @@
+# Terraform Plan Output - Week 1 Infrastructure
+# 
+# NOTE: This is a placeholder file. The actual plan will be generated when Terraform is run.
+#
+# To generate the actual plan:
+#   1. Install Terraform (https://www.terraform.io/downloads)
+#   2. Configure AWS credentials (aws configure or set AWS_PROFILE)
+#   3. Navigate to infra/terraform directory
+#   4. Run: terraform init
+#   5. Run: terraform plan -out=tfplan
+#   6. Run: terraform show tfplan > plans/week1_plan.txt
+#
+# Expected Resources to be Created:
+#   - VPC with 2 public and 2 private subnets
+#   - Internet Gateway and 2 NAT Gateways
+#   - Security Groups (bastion, ECS, DB, EC2, ALB)
+#   - RDS PostgreSQL instance (db.t3.medium)
+#   - 3 S3 buckets (recordings, transcripts, static)
+#   - ECS Cluster and Fargate service
+#   - ECR repositories (backend, worker)
+#   - EC2 GPU instance for Ollama
+#   - Lambda function and API Gateway
+#   - SES domain and email identity
+#   - IAM roles and policies
+#   - Secrets Manager secret for RDS credentials
+#
+# Estimated Cost: ~$200-500/month (depending on EC2 instance type and usage)
+#
+# IMPORTANT: Review the plan carefully before applying!
+
