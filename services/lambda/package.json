@@ -1,0 +1,21 @@
+{
+  "name": "soyl-ai-agent-lambda",
+  "version": "1.0.0",
+  "description": "Lambda functions for SOYL AI Agent",
+  "main": "handler.js",
+  "scripts": {
+    "build": "zip -r enquiry-handler.zip handler.js package.json node_modules/",
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.1499.0",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
+
