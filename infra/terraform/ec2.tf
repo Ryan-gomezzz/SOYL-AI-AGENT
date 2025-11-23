@@ -72,7 +72,9 @@ resource "aws_instance" "ollama" {
   key_name               = var.ssh_key_name
   vpc_security_group_ids = [aws_security_group.ec2.id]
   subnet_id              = aws_subnet.private[0].id
-  associate_public_ip    = true # For admin access (consider removing in production)
+  
+  # Note: Public IP assignment depends on subnet's map_public_ip_on_launch setting
+  # For admin access, consider using a bastion host instead
 
   iam_instance_profile = aws_iam_instance_profile.ec2_ollama.name
 
@@ -99,12 +101,17 @@ data "aws_ami" "ubuntu" {
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hubuntu-22.04-amd64-server-*"]
+    values = ["ubuntu/images/*/ubuntu-jammy-22.04-amd64-server-*"]
   }
 
   filter {
     name   = "virtualization-type"
     values = ["hvm"]
+  }
+  
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
   }
 }
 

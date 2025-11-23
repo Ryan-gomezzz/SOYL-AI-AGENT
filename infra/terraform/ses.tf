@@ -6,13 +6,15 @@ resource "aws_ses_domain_identity" "main" {
 }
 
 # SES Domain Identity Verification
-resource "aws_ses_domain_identity_verification" "main" {
-  domain = aws_ses_domain_identity.main.id
-
-  timeouts {
-    create = "5m"
-  }
-}
+# Note: This is commented out as it requires manual DNS TXT record setup first
+# After adding the DNS record (output from terraform), uncomment and apply again
+# resource "aws_ses_domain_identity_verification" "main" {
+#   domain = aws_ses_domain_identity.main.id
+#
+#   timeouts {
+#     create = "30m"
+#   }
+# }
 
 # SES Email Identity for Admin
 resource "aws_ses_email_identity" "admin" {
@@ -20,15 +22,9 @@ resource "aws_ses_email_identity" "admin" {
 }
 
 # SES Configuration Set (optional - for tracking)
+# Note: Tags are not supported for aws_ses_configuration_set
 resource "aws_ses_configuration_set" "main" {
   name = "${local.project_prefix}-ses-config"
-
-  tags = merge(
-    local.common_tags,
-    {
-      Name = "${local.project_prefix}-ses-config"
-    }
-  )
 }
 
 # Note: SES Domain verification requires DNS TXT record

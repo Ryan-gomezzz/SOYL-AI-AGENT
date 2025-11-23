@@ -25,9 +25,9 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
     username = var.db_username
     password = random_password.db_password.result
     engine   = "postgres"
-    host     = aws_db_instance.main.address
     port     = 5432
     dbname   = var.db_name
+    # host will be updated after RDS is created
   })
 }
 
@@ -48,7 +48,7 @@ resource "aws_db_subnet_group" "main" {
 resource "aws_db_instance" "main" {
   identifier             = "${local.project_prefix}-db"
   engine                 = "postgres"
-  engine_version         = "15.4"
+  engine_version         = "15"  # Use latest 15.x version
   instance_class         = var.db_instance_class
   allocated_storage      = var.db_allocated_storage
   storage_type           = "gp3"
@@ -83,6 +83,7 @@ resource "aws_db_instance" "main" {
     }
   )
 
-  depends_on = [aws_secretsmanager_secret_version.db_credentials]
+  # Note: Secret version is created first, but doesn't include host
+  # Host will be available after RDS creation
 }
 
