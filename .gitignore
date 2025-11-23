@@ -54,3 +54,12 @@ env/
 # Docker
 .dockerignore
 
+# Security - SSH keys and certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Keep docs/ - documentation should be committed
+

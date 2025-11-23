@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "service_needed": {
+      "type": "string",
+      "enum": ["GST", "Startup_Registration", "Income_Tax_Individual", "Income_Tax_Business", "Other"]
+    },
+    "entity_type": {
+      "type": "string",
+      "enum": ["Individual", "Proprietorship", "LLP", "Pvt_Ltd", "Other"]
+    },
+    "timeline": {
+      "type": "string"
+    },
+    "preferred_contact": {
+      "type": "string"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["service_needed", "entity_type"]
+}
+

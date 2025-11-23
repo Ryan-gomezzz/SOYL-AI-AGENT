@@ -1,0 +1,33 @@
+name: reference-check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  reference-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check PR body for Reference-Sections
+        run: |
+          PR_BODY="$(jq -r '.pull_request.body' < $GITHUB_EVENT_PATH)"
+          if ! echo "$PR_BODY" | grep -q "Reference-Sections:" ; then
+            echo "PR body must include 'Reference-Sections: <reference/README.md -> <section>>'"
+            exit 1
+          fi
+
+      - name: Block edits to /reference without MAINTAINER label
+        run: |
+          PR_FILES="$(jq -r '.pull_request.changed_files' < $GITHUB_EVENT_PATH)"
+          # If /reference files changed, ensure label MAINTAINER exists
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '^reference/' || true
+          if git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '^reference/' >/dev/null; then
+            if ! jq -r '.pull_request.labels[]?.name' < $GITHUB_EVENT_PATH | grep -q 'MAINTAINER'; then
+              echo "Edits to /reference/* require MAINTAINER label."
+              exit 1
+            fi
+          fi
+

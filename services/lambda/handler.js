@@ -40,30 +40,90 @@ exports.enquiry = async (event) => {
       SecretId: dbSecretArn
     }).promise();
 
-    const dbCredentials = JSON.parse(secretResponse.SecretString);
+    // Handle potential encoding issues (BOM, whitespace, etc.)
+    let secretString = secretResponse.SecretString;
+    
+    // Remove BOM if present
+    if (secretString.length > 0 && secretString.charCodeAt(0) === 0xFEFF) {
+      secretString = secretString.slice(1);
+    }
+    
+    // Remove any non-printable characters at the start
+    secretString = secretString.replace(/^[\u0000-\u001F\u007F-\u009F]+/, '');
+    
+    // Trim whitespace
+    secretString = secretString.trim();
+    
+    // Log the first few characters for debugging (without exposing sensitive data)
+    console.log('Secret string length:', secretString.length);
+    console.log('First 50 chars:', secretString.substring(0, 50));
+    
+    let dbCredentials;
+    try {
+      dbCredentials = JSON.parse(secretString);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError.message);
+      console.error('Secret string (first 200 chars):', secretString.substring(0, 200));
+      throw new Error(`Failed to parse secret JSON: ${parseError.message}`);
+    }
 
-    // Connect to database
+    // Connect to database with SSL (required by RDS)
     const client = new Client({
       host: dbCredentials.host,
-      port: dbCredentials.port,
-      database: dbCredentials.dbname,
-      user: dbCredentials.username,
-      password: dbCredentials.password
+      port: dbCredentials.port || 5432,
+      database: dbCredentials.dbname || dbCredentials.database,
+      user: dbCredentials.username || dbCredentials.user,
+      password: dbCredentials.password,
+      ssl: {
+        rejectUnauthorized: false // RDS requires SSL but we can skip cert verification
+      },
+      connectionTimeoutMillis: 10000
+    });
+
+    console.log('Attempting to connect to database:', {
+      host: dbCredentials.host,
+      port: dbCredentials.port || 5432,
+      database: dbCredentials.dbname || dbCredentials.database,
+      user: dbCredentials.username || dbCredentials.user
     });
 
     await client.connect();
+    console.log('Database connection successful');
 
-    // Save enquiry to database
+    // Create leads table if it doesn't exist
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS leads (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        phone VARCHAR(20),
+        email VARCHAR(255) NOT NULL,
+        source VARCHAR(100),
+        enquiry_type VARCHAR(100),
+        notes TEXT,
+        status VARCHAR(50) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_leads_email ON leads(email);
+      CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
+    `;
+    
+    await client.query(createTableQuery);
+    console.log('Table verified/created');
+
+    // Save enquiry to database (using leads table as per schema)
     const insertQuery = `
-      INSERT INTO enquiries (email, name, message, created_at)
-      VALUES ($1, $2, $3, NOW())
+      INSERT INTO leads (email, name, notes, enquiry_type, source, status, created_at)
+      VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
       RETURNING id
     `;
 
     const result = await client.query(insertQuery, [
       body.email,
       body.name,
-      body.message
+      body.message || body.notes || '',
+      body.enquiryType || 'general',
+      'website'
     ]);
 
     await client.end();
