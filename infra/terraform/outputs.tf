@@ -95,6 +95,7 @@ output "security_group_ids" {
     db      = aws_security_group.db.id
     ec2     = aws_security_group.ec2.id
     alb     = aws_security_group.alb.id
+    lambda  = aws_security_group.lambda.id
   }
 }
 

@@ -6,13 +6,19 @@ resource "aws_lambda_function" "enquiry_handler" {
   function_name    = "${local.project_prefix}-enquiry-handler"
   role            = aws_iam_role.lambda_execution.arn
   handler         = "handler.enquiry"
-  runtime         = "nodejs18.x"
+  runtime         = "nodejs20.x"
   timeout         = 30
   memory_size     = 256
 
   # Placeholder zip file - actual code will be deployed via CI/CD
   # For now, create a minimal zip with placeholder code
   source_code_hash = fileexists("${path.module}/../../services/lambda/enquiry-handler.zip") ? filebase64sha256("${path.module}/../../services/lambda/enquiry-handler.zip") : "placeholder"
+
+  # VPC Configuration for RDS access
+  vpc_config {
+    subnet_ids         = aws_subnet.private[*].id
+    security_group_ids = [aws_security_group.lambda.id]
+  }
 
   environment {
     variables = {

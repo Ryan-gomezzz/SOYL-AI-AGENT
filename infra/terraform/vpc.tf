@@ -254,6 +254,14 @@ resource "aws_security_group" "db" {
   }
 
   ingress {
+    description     = "PostgreSQL from Lambda"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.lambda.id]
+  }
+
+  ingress {
     description = "PostgreSQL from private subnets"
     from_port   = 5432
     to_port     = 5432
@@ -311,6 +319,28 @@ resource "aws_security_group" "ec2" {
     local.common_tags,
     {
       Name = "${local.project_prefix}-ec2-sg"
+    }
+  )
+}
+
+# Lambda Security Group
+resource "aws_security_group" "lambda" {
+  name        = "${local.project_prefix}-lambda-sg"
+  description = "Security group for Lambda functions"
+  vpc_id      = aws_vpc.main.id
+
+  egress {
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.project_prefix}-lambda-sg"
     }
   )
 }
