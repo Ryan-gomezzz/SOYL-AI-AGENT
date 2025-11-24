@@ -23,7 +23,7 @@ const ses = new AWS.SES({
 });
 
 // Email configuration
-const FROM_EMAIL = process.env.FROM_EMAIL || 'ryangomez9965@gmail.com';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'ryan.gomez@soyl.cloud';
 const FROM_NAME = process.env.FROM_NAME || 'SOYL AI Agent';
 const REPLY_TO = process.env.REPLY_TO || FROM_EMAIL;
 
