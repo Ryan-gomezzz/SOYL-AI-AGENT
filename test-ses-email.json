@@ -1,0 +1,19 @@
+{
+  "Source": "ryangomez9965@gmail.com",
+  "Destination": {
+    "ToAddresses": ["ryangomez9965@gmail.com"]
+  },
+  "Message": {
+    "Subject": {
+      "Data": "SES Verification Test - SOYL AI Agent",
+      "Charset": "UTF-8"
+    },
+    "Body": {
+      "Text": {
+        "Data": "This is a test email to verify SES is working correctly after DNS verification.\n\nDomain: www.soyl.cloud is verified.\nEmail: ryangomez9965@gmail.com is verified.\n\nSES is ready for production use!",
+        "Charset": "UTF-8"
+      }
+    }
+  }
+}
+

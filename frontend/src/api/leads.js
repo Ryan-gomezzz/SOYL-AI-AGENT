@@ -4,7 +4,15 @@
  * Handles all API calls related to leads management
  */
 
+// API URL configuration
+// For production: API Gateway endpoint
+// For development: local backend
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_GATEWAY_BASE = import.meta.env.VITE_API_GATEWAY_URL || 'https://px9q707kr6.execute-api.us-east-1.amazonaws.com/staging';
+
+// Determine which API to use based on environment
+const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+const BASE_URL = isProduction ? API_GATEWAY_BASE : API_URL;
 
 /**
  * Fetch all leads with pagination and filtering
@@ -26,7 +34,12 @@ export async function getLeads(options = {}) {
   if (options.search) params.append('search', options.search);
 
   const queryString = params.toString();
-  const url = `${API_URL}/api/v1/leads${queryString ? `?${queryString}` : ''}`;
+  // Use backend API for leads (when available) or API Gateway
+  // Note: Leads endpoint will be available when backend ECS service is accessible
+  const leadsUrl = isProduction 
+    ? `${API_GATEWAY_BASE}/leads`  // Backend endpoint (when ALB configured)
+    : `${API_URL}/api/v1/leads`;
+  const url = `${leadsUrl}${queryString ? `?${queryString}` : ''}`;
 
   try {
     const response = await fetch(url, {
@@ -87,7 +100,11 @@ export async function getLeadById(leadId) {
  */
 export async function submitEnquiry(enquiryData) {
   try {
-    const response = await fetch(`${API_URL}/api/v1/enquiry`, {
+    // Use API Gateway for enquiry submission (Lambda endpoint)
+    const enquiryUrl = isProduction
+      ? `${API_GATEWAY_BASE}/enquiry`  // API Gateway Lambda endpoint
+      : `${API_URL}/api/v1/enquiry`;
+    const response = await fetch(enquiryUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

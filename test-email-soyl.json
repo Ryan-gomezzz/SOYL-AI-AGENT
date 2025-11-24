@@ -1,0 +1,19 @@
+{
+  "Source": "ryan.gomez@soyl.cloud",
+  "Destination": {
+    "ToAddresses": ["ryangomez9965@gmail.com"]
+  },
+  "Message": {
+    "Subject": {
+      "Data": "Test Email from SOYL AI Agent",
+      "Charset": "UTF-8"
+    },
+    "Body": {
+      "Html": {
+        "Data": "<h2>Test Email</h2><p>This is a test email from ryan.gomez@soyl.cloud to verify SES is working.</p>",
+        "Charset": "UTF-8"
+      }
+    }
+  }
+}
+

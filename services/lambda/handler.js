@@ -3,6 +3,7 @@ const { Client } = require('pg');
 
 const secretsManager = new AWS.SecretsManager();
 const s3 = new AWS.S3();
+const ses = new AWS.SES({ region: process.env.AWS_REGION || 'us-east-1' });
 
 /**
  * Lambda handler for POST /enquiry endpoint
@@ -130,9 +131,19 @@ exports.enquiry = async (event) => {
 
     const enquiryId = result.rows[0].id;
 
-    // TODO: Publish to SQS for async processing
-    // For now, just log
-    console.log(`Enquiry saved with ID: ${enquiryId}`);
+    // Send confirmation email (non-blocking)
+    sendConfirmationEmail({
+      name: body.name,
+      email: body.email,
+      lead_id: enquiryId
+    }).catch((emailError) => {
+      // Log email error but don't fail the request
+      console.error('⚠️  Failed to send confirmation email (non-critical):', {
+        error: emailError.message,
+        lead_id: enquiryId,
+        email: body.email?.substring(0, 20)
+      });
+    });
 
     return {
       statusCode: 200,
@@ -162,4 +173,101 @@ exports.enquiry = async (event) => {
     };
   }
 };
+
+/**
+ * Send confirmation email to lead
+ * @param {Object} leadData - Lead data with name, email, lead_id
+ */
+async function sendConfirmationEmail(leadData) {
+  const { name, email, lead_id } = leadData;
+
+  if (!name || !email || !lead_id) {
+    throw new Error('Missing required fields for confirmation email');
+  }
+
+  const FROM_EMAIL = process.env.FROM_EMAIL || 'ryan.gomez@soyl.cloud';
+  const FROM_NAME = process.env.FROM_NAME || 'SOYL AI Agent';
+
+  // Simple HTML email template
+  const htmlBody = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .header { background-color: #4F46E5; color: white; padding: 20px; text-align: center; }
+        .content { background-color: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Thank You for Your Enquiry</h1>
+      </div>
+      <div class="content">
+        <p>Dear ${name},</p>
+        <p>Thank you for contacting SOYL AI Agent. We have received your enquiry and will get back to you shortly.</p>
+        <p><strong>Your Enquiry Details:</strong></p>
+        <ul>
+          <li><strong>Enquiry ID:</strong> ${lead_id}</li>
+          <li><strong>Date Submitted:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</li>
+        </ul>
+        <p>Our team will review your enquiry and respond within 24-48 hours.</p>
+        <p>Best regards,<br>SOYL AI Agent Team</p>
+      </div>
+      <div class="footer">
+        <p>This is an automated confirmation email. Please do not reply to this message.</p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const textBody = `
+Thank you for your enquiry, ${name}!
+
+We have received your enquiry and will get back to you soon.
+
+Your enquiry ID: ${lead_id}
+Date Submitted: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+
+Our team will review your enquiry and respond within 24-48 hours.
+
+Best regards,
+SOYL AI Agent Team
+  `.trim();
+
+  const params = {
+    Source: `${FROM_NAME} <${FROM_EMAIL}>`,
+    Destination: {
+      ToAddresses: [email]
+    },
+    Message: {
+      Subject: {
+        Data: 'Thank you for your enquiry - SOYL AI Agent',
+        Charset: 'UTF-8'
+      },
+      Body: {
+        Html: {
+          Data: htmlBody,
+          Charset: 'UTF-8'
+        },
+        Text: {
+          Data: textBody,
+          Charset: 'UTF-8'
+        }
+      }
+    },
+    ReplyToAddresses: [FROM_EMAIL]
+  };
+
+  try {
+    const result = await ses.sendEmail(params).promise();
+    console.log(`✅ Email sent successfully: ${email} (MessageId: ${result.MessageId})`);
+    return result;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    throw error;
+  }
+}
 
