@@ -325,7 +325,7 @@ resource "aws_security_group" "ec2" {
 
 # Lambda Security Group
 resource "aws_security_group" "lambda" {
-  name        = "${local.project_prefix}-lambda-sg"
+  name_prefix = "${local.project_prefix}-lambda-sg-"
   description = "Security group for Lambda functions"
   vpc_id      = aws_vpc.main.id
 

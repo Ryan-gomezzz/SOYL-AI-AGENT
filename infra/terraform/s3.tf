@@ -59,6 +59,53 @@ resource "aws_s3_bucket_public_access_block" "recordings" {
   restrict_public_buckets  = true
 }
 
+# S3 Bucket Policy for Connect to write recordings
+# This allows Amazon Connect service to write call recordings to the bucket
+resource "aws_s3_bucket_policy" "recordings_connect" {
+  bucket = aws_s3_bucket.recordings.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowConnectServiceWrite"
+        Effect = "Allow"
+        Principal = {
+          Service = "connect.amazonaws.com"
+        }
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject"
+        ]
+        Resource = "${aws_s3_bucket.recordings.arn}/*"
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      },
+      {
+        Sid    = "AllowConnectServiceList"
+        Effect = "Allow"
+        Principal = {
+          Service = "connect.amazonaws.com"
+        }
+        Action = [
+          "s3:ListBucket"
+        ]
+        Resource = aws_s3_bucket.recordings.arn
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      }
+    ]
+  })
+
+  depends_on = [aws_s3_bucket.recordings]
+}
+
 # S3 Bucket for Transcripts
 resource "aws_s3_bucket" "transcripts" {
   bucket = "${local.project_prefix}-transcripts-${data.aws_region.current.name}"

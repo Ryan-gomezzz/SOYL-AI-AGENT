@@ -13,7 +13,11 @@ SOYL AI Agent is an AI-powered customer acquisition agent system that handles cu
 - **ECS Fargate**: Container orchestration for backend services
 - **ECR**: Container registry for service images
 - **EC2 GPU Instance**: GPU instance for running Ollama LLM service
-- **Lambda + API Gateway**: Serverless endpoint for handling customer enquiries
+- **Lambda Functions**: 
+  - Enquiry handler (API Gateway integration)
+  - Transcribe worker (S3 event processing)
+  - Connect handler (deprecated, kept for compatibility)
+- **API Gateway**: HTTP API for Lambda functions and webhooks
 - **SES**: Email service for sending confirmation emails
 - **IAM Roles**: Least-privilege roles for Lambda, ECS, and other services
 
@@ -46,27 +50,48 @@ SOYL AI Agent is an AI-powered customer acquisition agent system that handles cu
    terraform plan
    ```
 
-2. **Add SES DNS Records**
+2. **Build Lambda Function Packages**
+   ```bash
+   # Build enquiry handler
+   cd services/lambda
+   npm install --production
+   # Create zip file (see deploy-steps.md for platform-specific commands)
+   
+   # Build transcribe worker
+   cd services/worker
+   npm install --production
+   # Use build script (see deploy-steps.md)
+   ```
+
+3. **Add SES DNS Records**
    - Review `infra/terraform/plans/week1_plan.txt` for SES DNS TXT record details
    - Add the TXT record to your domain DNS settings
    - Wait for AWS SES domain verification (up to 24 hours)
 
-3. **Apply Infrastructure** (after review and SES verification)
+4. **Apply Infrastructure** (after review and SES verification)
    ```bash
+   cd infra/terraform
    terraform apply
    ```
 
-4. **Build and Push Backend Image**
+5. **Build and Push Backend Image**
    ```bash
    aws ecr get-login-password --region <region> | docker login --username AWS --password-stdin <ecr-repo-url>
    docker build -t <ecr-repo-url>:latest services/backend
    docker push <ecr-repo-url>:latest
    ```
 
-5. **Run Local Development**
+6. **Run Local Development**
    ```bash
    scripts/run-local.sh
    ```
+
+7. **Telephony Setup (Twilio)**
+   - Create a Twilio account and buy a phone number
+   - Add `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` to your pipeline/Secrets
+   - Deploy the webhook Lambda with `npm run deploy:lambda` (or the provided GH Action)
+   - Run `scripts/twilio/provision_webhook.sh` to set the Twilio phone number webhook to `https://<YOUR-API>/twilio/webhook`
+   - Use the included test scripts to simulate inbound events
 
 ## Project Structure
 

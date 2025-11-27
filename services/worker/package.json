@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node src/worker.js",
     "dev": "nodemon src/worker.js",
-    "test": "jest"
+    "test": "jest",
+    "transcribe": "node src/transcribe-worker.js",
+    "build:lambda": "powershell -ExecutionPolicy Bypass -File ../../scripts/build-transcribe-lambda.ps1",
+    "build:lambda:unix": "bash ../../scripts/build-transcribe-lambda.sh"
   },
   "keywords": [],
   "author": "",
