@@ -1,0 +1,64 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "StartOutboundVoiceContact",
+  "Metadata": {
+    "entryPointPosition": {
+      "x": 0,
+      "y": 0
+    },
+    "snapToGrid": false,
+    "ActionMetadata": {
+      "StartOutboundVoiceContact": {
+        "position": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      "SetRecordingBehavior": {
+        "position": {
+          "x": 0,
+          "y": 100
+        }
+      },
+      "Disconnect": {
+        "position": {
+          "x": 0,
+          "y": 200
+        }
+      }
+    }
+  },
+  "Actions": [
+    {
+      "Type": "StartOutboundVoiceContact",
+      "Parameters": {
+        "DestinationPhoneNumber": "$.Attributes.DestinationPhoneNumber",
+        "ContactFlowId": "$.ContactFlowId",
+        "InstanceId": "$.InstanceId",
+        "Attributes": {
+          "LeadId": "$.Attributes.LeadId",
+          "PhoneNumber": "$.Attributes.DestinationPhoneNumber"
+        },
+        "QueueId": "$.QueueId"
+      },
+      "Transitions": {
+        "Success": "SetRecordingBehavior",
+        "Error": "Disconnect"
+      }
+    },
+    {
+      "Type": "SetRecordingBehavior",
+      "Parameters": {
+        "BehaviorType": "RecordAll"
+      },
+      "Transitions": {
+        "Success": "Disconnect"
+      }
+    },
+    {
+      "Type": "Disconnect",
+      "Parameters": {}
+    }
+  ]
+}
+

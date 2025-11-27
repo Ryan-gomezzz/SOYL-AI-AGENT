@@ -1,6 +1,6 @@
-# Deployment Steps - Week 1 Infrastructure
+# Deployment Steps - Infrastructure
 
-This document provides step-by-step instructions for deploying the Week 1 infrastructure.
+This document provides step-by-step instructions for deploying the SOYL AI Agent infrastructure, including Lambda functions.
 
 ## Prerequisites
 
@@ -99,7 +99,40 @@ This document provides step-by-step instructions for deploying the Week 1 infras
    - Check email inbox for verification email
    - Click verification link
 
-## Step 4: Apply Terraform Infrastructure
+## Step 4: Build Lambda Function Packages
+
+Before applying Terraform, you need to build the Lambda function packages:
+
+1. **Build Enquiry Handler Lambda**:
+   ```bash
+   cd services/lambda
+   npm install --production
+   # On Windows PowerShell:
+   Compress-Archive -Path handler.js,package.json,node_modules -DestinationPath enquiry-handler.zip -Force
+   # On Linux/Mac:
+   zip -r enquiry-handler.zip handler.js package.json node_modules/
+   ```
+
+2. **Build Connect Handler Lambda** (deprecated but required by Terraform):
+   ```bash
+   cd services/lambda
+   # On Windows PowerShell:
+   Compress-Archive -Path connect-handler.js,package.json,node_modules -DestinationPath connect-handler.zip -Force
+   # On Linux/Mac:
+   zip -r connect-handler.zip connect-handler.js package.json node_modules/
+   ```
+
+3. **Build Transcribe Worker Lambda**:
+   ```bash
+   cd services/worker
+   npm install --production
+   # On Windows PowerShell:
+   powershell -ExecutionPolicy Bypass -File ../../scripts/build-transcribe-lambda.ps1
+   # On Linux/Mac:
+   bash ../../scripts/build-transcribe-lambda.sh
+   ```
+
+## Step 5: Apply Terraform Infrastructure
 
 **WARNING**: This will create AWS resources and incur costs. Review the plan carefully first.
 
@@ -107,9 +140,11 @@ This document provides step-by-step instructions for deploying the Week 1 infras
    - Review `infra/terraform/plans/week1_plan.txt`
    - Confirm all resources are correct
    - Verify costs are acceptable
+   - Ensure Lambda zip files exist in `services/lambda/` and `services/worker/`
 
 2. Apply Terraform:
    ```bash
+   cd infra/terraform
    terraform apply tfplan
    ```
 
@@ -122,6 +157,7 @@ This document provides step-by-step instructions for deploying the Week 1 infras
    - VPC and networking: ~2 minutes
    - RDS instance: ~5-10 minutes
    - EC2 instance: ~2-3 minutes
+   - Lambda functions: ~1-2 minutes each
    - Other resources: ~1-2 minutes
 
 4. Save outputs:
@@ -129,7 +165,19 @@ This document provides step-by-step instructions for deploying the Week 1 infras
    terraform output -json > plans/week1_outputs.json
    ```
 
-## Step 5: Build and Push Backend Docker Image
+5. **Verify Lambda Functions**:
+   ```bash
+   # List deployed Lambda functions
+   aws lambda list-functions --query "Functions[?contains(FunctionName, 'ai-ca-agent-staging')].FunctionName" --output table
+   
+   # Test enquiry handler
+   API_URL=$(terraform output -raw api_gateway_url)
+   curl -X POST $API_URL/enquiry \
+     -H "Content-Type: application/json" \
+     -d '{"name": "Test User", "email": "test@example.com", "message": "Test enquiry"}'
+   ```
+
+## Step 6: Build and Push Backend Docker Image
 
 1. Get ECR login:
    ```bash
@@ -154,7 +202,7 @@ This document provides step-by-step instructions for deploying the Week 1 infras
    docker push <ecr-repo-url>:latest
    ```
 
-## Step 6: Update ECS Task Definition
+## Step 7: Update ECS Task Definition
 
 1. Update the ECS task definition with the actual image URI:
    ```bash
@@ -170,7 +218,7 @@ This document provides step-by-step instructions for deploying the Week 1 infras
      --force-new-deployment
    ```
 
-## Step 7: Configure EC2 Ollama Instance
+## Step 8: Configure EC2 Ollama Instance
 
 1. SSH into the EC2 instance:
    ```bash
@@ -194,7 +242,7 @@ This document provides step-by-step instructions for deploying the Week 1 infras
    sudo systemctl status ollama
    ```
 
-## Step 8: Database Setup
+## Step 9: Database Setup
 
 1. Connect to RDS database:
    ```bash
@@ -212,7 +260,7 @@ This document provides step-by-step instructions for deploying the Week 1 infras
    -- Run the SQL schema from architecture.md
    ```
 
-## Step 9: Smoke Tests
+## Step 10: Smoke Tests
 
 1. **Test API Gateway endpoint**:
    ```bash
@@ -244,7 +292,7 @@ This document provides step-by-step instructions for deploying the Week 1 infras
    aws s3 ls s3://<project>-<environment>-static-<region>/
    ```
 
-## Step 10: Post-Deployment Tasks
+## Step 11: Post-Deployment Tasks
 
 1. **Lock down Bastion Security Group**:
    - Update security group to allow SSH only from your IP
@@ -289,9 +337,15 @@ This document provides step-by-step instructions for deploying the Week 1 infras
 - Verify IAM roles have correct permissions
 
 ### Lambda Function Errors
-- Check CloudWatch logs for the function
+- Check CloudWatch logs for the function:
+  ```bash
+  aws logs tail /aws/lambda/<function-name> --follow
+  ```
 - Verify Secrets Manager permissions
-- Check environment variables are set correctly
+- Check environment variables are set correctly (note: `AWS_REGION` is reserved and cannot be set)
+- Verify Lambda zip files are built correctly and contain all dependencies
+- Check VPC configuration if Lambda needs database access
+- Verify IAM role has necessary permissions (VPC access, Secrets Manager, S3, etc.)
 
 ## Cost Optimization
 

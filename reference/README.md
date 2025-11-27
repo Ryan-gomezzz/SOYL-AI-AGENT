@@ -83,7 +83,7 @@ Stress tests, 150+ calls, compliance, final latency tuning.
 
 ```sql
 leads { id, name, phone, email, source, created_at, status }
-calls { id, lead_id, connect_contact_id, recording_s3_key, duration, started_at, ended_at }
+calls { id, lead_id, twilio_call_sid, recording_s3_key, duration, started_at, ended_at }
 transcripts { id, call_id, s3_key, transcript_text, created_at }
 memory_summaries { id, lead_id, summary_text, tags, created_at }
 llm_results { id, call_id, result_json, prompt_hash, created_at }

@@ -1,80 +1,106 @@
-# Complete Deployment Fixes and Node.js 20 Upgrade
+# PR: Replace Amazon Connect with Twilio Voice
 
-## Reference-Sections: reference/README.md -> WEEK 1 — FOUNDATIONS & CORE PIPELINE (Engineer A)
+## Summary
 
-## Overview
+This PR replaces Amazon Connect with Twilio Voice due to AISPL account restrictions that prevent creation of Amazon Connect instances.
 
-This PR completes the Week 1 infrastructure deployment by fixing Lambda function issues, configuring VPC access for RDS, and upgrading to Node.js 20 runtime as required by AWS.
+## Reason
+
+Our AWS account is provisioned by AISPL (Amazon Internet Services Private Limited). AISPL accounts are not permitted to create Amazon Connect instances due to region/reseller/telephony regulatory restrictions. To avoid delaying development, we are switching to Twilio Voice, which provides:
+- Instant phone number provisioning
+- Webhook-driven model that fits our API Gateway + Lambda architecture
+- Support for both inbound & outbound calls
+- Real-time audio streaming support
+- Clean integration with our AI agent
 
 ## Changes
 
-### Infrastructure Updates
-- ✅ Upgraded Lambda runtime from Node.js 18 to Node.js 20 (AWS requirement)
-- ✅ Configured Lambda VPC access for RDS connectivity
-- ✅ Added Lambda security group and updated RDS security group rules
-- ✅ Updated IAM roles with VPC access permissions
-- ✅ Updated Terraform configuration for Node.js 20
+### New Files Created
 
-### Lambda Function Fixes
-- ✅ Fixed dependency packaging and deployment
-- ✅ Added SSL configuration for RDS PostgreSQL connection
-- ✅ Implemented table creation/verification logic
-- ✅ Fixed secret parsing with encoding handling (BOM, whitespace)
-- ✅ Improved error handling and logging
-- ✅ Updated handler to use correct database schema (leads table)
+1. **Lambda Handler**
+   - `infra/lambda/twilio-webhook/handler.js` - Twilio webhook handler
+   - `infra/lambda/twilio-webhook/package.json` - Dependencies
 
-### Testing & Verification
-- ✅ API Gateway endpoint fully functional
-- ✅ Lambda → RDS connection successful
-- ✅ Enquiries successfully saved to database
-- ✅ All deployment issues resolved
+2. **Scripts**
+   - `scripts/twilio/buy_number.sh` - Purchase Twilio phone numbers
+   - `scripts/twilio/provision_webhook.sh` - Configure webhook URLs
 
-### Documentation
-- ✅ Added comprehensive deployment status documentation
-- ✅ Added Lambda VPC configuration guide
-- ✅ Added Node.js upgrade documentation
-- ✅ Cleaned up outdated Week 1 status reports
+3. **Terraform**
+   - `infra/terraform/twilio-provider.tf` - Documentation and outputs
 
-## Testing Results
+4. **Documentation**
+   - `docs/integration.md` - Twilio integration guide
+   - `docs/twilio-costs.md` - Twilio cost analysis
+   - `docs/TWILIO_MIGRATION_SUMMARY.md` - Migration summary
 
-- **API Gateway Endpoint**: `https://px9q707kr6.execute-api.us-east-1.amazonaws.com/staging/enquiry`
-- **Status**: ✅ Fully Working
-- **Test Enquiry IDs**: 
-  - `66cefea5-0aa0-4e58-95a0-282b26745d02`
-  - `85ee4fbe-50a6-458b-92fc-a46d4f324a68`
-  - `c44f8603-c582-4e88-8c61-23469206111d`
-  - `60f7a921-fd16-42b9-9044-ccb2c3169459`
+5. **Tests**
+   - `tests/integration/twilio-webhook.test.js` - Integration tests
+   - `tests/unit/twilio-payload.test.js` - Unit tests
 
-## Files Changed
+6. **CI/CD**
+   - `.github/workflows/deploy-twilio-lambda.yml` - Deployment workflow
 
-### Infrastructure
-- `infra/terraform/lambda.tf` - Node.js 20 runtime, VPC config
-- `infra/terraform/vpc.tf` - Lambda security group
-- `infra/terraform/iam.tf` - VPC access policy
-- `infra/terraform/outputs.tf` - Lambda SG output
+### Files Modified
 
-### Lambda Function
-- `services/lambda/handler.js` - SSL, table creation, error handling
-- `services/lambda/package-lock.json` - Dependencies
+1. **Architecture & Documentation**
+   - `docs/architecture.md` - Added Twilio telephony section
+   - `README.md` - Added Twilio setup instructions
+   - `docs/WEEK2_TASKS_SUMMARY.md` - Replaced all Connect references
+   - `docs/COST_MANAGEMENT_GUIDE.md` - Updated cost references
+   - `reference/README.md` - Updated data model
 
-### Documentation
-- `docs/DEPLOYMENT_STATUS.md` - Current deployment status
-- `docs/LAMBDA_VPC_CONFIGURATION_COMPLETE.md` - VPC setup guide
-- `docs/NODEJS_UPGRADE.md` - Node.js 20 upgrade details
-- Removed 16 outdated documentation files
+2. **Database**
+   - `services/backend/migrations/002_create_calls_table.sql` - Renamed `connect_contact_id` to `twilio_call_sid`
+   - `services/backend/src/utils/migrations/002_add_connect_fields.sql` - Updated to handle field rename
 
-## Deployment Status
+3. **Backend Routes**
+   - `services/backend/src/routes/calls.js` - Updated to use `twilio_call_sid`
+   - `services/backend/src/routes/transcripts.js` - Updated to use `twilio_call_sid`
 
-✅ **All Week 1 infrastructure components deployed and tested**
-✅ **Lambda function fully functional**
-✅ **API Gateway endpoint operational**
-✅ **Database connectivity verified**
+4. **Deprecated Files**
+   - `services/lambda/connect-handler.js` - Marked as deprecated
 
-## Related Sections
+## Testing
 
-- **reference/README.md -> WEEK 1 — FOUNDATIONS & CORE PIPELINE**
-  - Engineer A tasks: IAM, VPC, subnets; RDS Postgres; Lambda; API Gateway; ECS Fargate
-- **reference/README.md -> Developer conventions**
-  - Backend: Node 18 (upgraded to Node 20 per AWS requirement)
-  - Secrets: AWS Secrets Manager only
+- ✅ Integration tests for webhook signature validation
+- ✅ Unit tests for payload parsing
+- ✅ Error handling tests
 
+## Deployment Steps
+
+1. Add secrets to CI/CD:
+   - `TWILIO_ACCOUNT_SID`
+   - `TWILIO_AUTH_TOKEN`
+   - `TWILIO_PHONE_SID` (optional, for auto-provisioning)
+   - `WEBHOOK_FULL_URL`
+   - `VAPI_ENDPOINT` (optional)
+   - `VAPI_API_KEY` (optional)
+
+2. Deploy Lambda function (via CI/CD or manually)
+
+3. Purchase Twilio phone number:
+   ```bash
+   ./scripts/twilio/buy_number.sh IN +91XXXXXXXXXX <webhook_url>
+   ```
+
+4. Configure webhook (if not done automatically):
+   ```bash
+   ./scripts/twilio/provision_webhook.sh <phone_sid> <webhook_url>
+   ```
+
+## Breaking Changes
+
+- Database field renamed: `connect_contact_id` → `twilio_call_sid`
+- Migration will automatically rename existing columns if present
+
+## Notes
+
+- Amazon Connect Terraform files (`infra/terraform/connect.tf`) are kept for reference but should not be applied
+- Old Connect handler is deprecated but kept for reference
+- All documentation includes notes about the AISPL restriction
+
+## References
+
+- [Twilio Voice Docs](https://www.twilio.com/docs/voice)
+- [Twilio Webhooks](https://www.twilio.com/docs/voice/webhooks)
+- Migration summary: `docs/TWILIO_MIGRATION_SUMMARY.md`

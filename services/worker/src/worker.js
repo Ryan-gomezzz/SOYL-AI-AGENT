@@ -3,27 +3,25 @@ require('dotenv').config();
 /**
  * Background Worker Service
  * 
- * This service processes background jobs such as:
- * - Transcribing call recordings
- * - Processing LLM responses
- * - Sending confirmation emails
+ * Week 2 - Engineer B: Batch Transcribe Worker
+ * 
+ * This service processes background jobs:
+ * - Transcribing call recordings (AWS Transcribe)
+ * - Processing LLM responses (Week 3)
+ * - Sending confirmation emails (Week 3)
  * - Updating lead status
  */
+
+const { startWorker } = require('./transcribe-worker');
 
 console.log('Worker service starting...');
 console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 
-// TODO: Implement worker logic
-// - Connect to Redis/Bull queue
-// - Process transcription jobs
-// - Process LLM inference jobs
-// - Send emails via SES
-// - Update database records
-
-// Placeholder worker loop
-setInterval(() => {
-  console.log('Worker heartbeat:', new Date().toISOString());
-}, 60000);
+// Start the transcribe worker
+startWorker().catch(error => {
+  console.error('Fatal error starting worker:', error);
+  process.exit(1);
+});
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

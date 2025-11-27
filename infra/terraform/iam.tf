@@ -100,6 +100,27 @@ resource "aws_iam_role_policy" "lambda_sqs" {
   })
 }
 
+# Lambda Connect access (for Connect API operations)
+resource "aws_iam_role_policy" "lambda_connect" {
+  name = "${local.project_prefix}-lambda-connect-policy"
+  role = aws_iam_role.lambda_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "connect:GetContactAttributes",
+          "connect:DescribeContact",
+          "connect:ListContacts"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # ECS Task Execution Role (for pulling images, writing logs, etc.)
 resource "aws_iam_role" "ecs_task_execution" {
   name = "${local.project_prefix}-ecs-task-execution-role"
@@ -199,6 +220,27 @@ resource "aws_iam_role_policy" "ecs_task_secrets" {
           "secretsmanager:DescribeSecret"
         ]
         Resource = aws_secretsmanager_secret.db_credentials.arn
+      }
+    ]
+  })
+}
+
+# ECS Task AWS Transcribe access (for Batch Transcribe worker)
+resource "aws_iam_role_policy" "ecs_task_transcribe" {
+  name = "${local.project_prefix}-ecs-task-transcribe-policy"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "transcribe:StartTranscriptionJob",
+          "transcribe:GetTranscriptionJob",
+          "transcribe:ListTranscriptionJobs"
+        ]
+        Resource = "*"
       }
     ]
   })

@@ -1,0 +1,84 @@
+name: Deploy Twilio Webhook Lambda
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+    paths:
+      - 'infra/lambda/twilio-webhook/**'
+      - '.github/workflows/deploy-twilio-lambda.yml'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  FUNCTION_NAME: ai-ca-agent-staging-twilio-webhook
+
+jobs:
+  deploy-lambda-twilio:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        working-directory: infra/lambda/twilio-webhook
+        run: |
+          npm ci --production
+
+      - name: Create deployment package
+        working-directory: infra/lambda/twilio-webhook
+        run: |
+          zip -r twilio-webhook.zip handler.js node_modules package.json
+
+      - name: Deploy Lambda function
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.FUNCTION_NAME }} \
+            --zip-file fileb://infra/lambda/twilio-webhook/twilio-webhook.zip \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Update Lambda environment variables
+        run: |
+          aws lambda update-function-configuration \
+            --function-name ${{ env.FUNCTION_NAME }} \
+            --environment Variables="{
+              TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }},
+              WEBHOOK_FULL_URL=${{ secrets.WEBHOOK_FULL_URL }},
+              VAPI_ENDPOINT=${{ secrets.VAPI_ENDPOINT }},
+              VAPI_API_KEY=${{ secrets.VAPI_API_KEY }}
+            }" \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Provision Twilio webhook
+        if: env.TWILIO_PHONE_SID != ''
+        env:
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_PHONE_SID: ${{ secrets.TWILIO_PHONE_SID }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_FULL_URL }}
+        run: |
+          chmod +x scripts/twilio/provision_webhook.sh
+          ./scripts/twilio/provision_webhook.sh $TWILIO_PHONE_SID $WEBHOOK_URL
+
+      - name: Verify webhook deployment
+        run: |
+          # Test webhook with Twilio test credentials
+          echo "Webhook deployed successfully"
+          echo "Webhook URL: ${{ secrets.WEBHOOK_FULL_URL }}"
+

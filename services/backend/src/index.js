@@ -21,6 +21,8 @@ let server = null;
 // Import routes and database
 const enquiryRoutes = require('./routes/enquiry');
 const leadsRoutes = require('./routes/leads');
+const callsRoutes = require('./routes/calls');
+const transcriptsRoutes = require('./routes/transcripts');
 const { initializePool, query } = require('./config/database');
 const { runMigrations } = require('./utils/migrate');
 
@@ -97,6 +99,8 @@ app.get('/api/v1/status', (req, res) => {
 // API Routes
 app.use('/api/v1', enquiryRoutes);
 app.use('/api/v1', leadsRoutes);
+app.use('/api/v1', callsRoutes);
+app.use('/api/v1', transcriptsRoutes);
 
 // 404 handler
 app.use((req, res) => {

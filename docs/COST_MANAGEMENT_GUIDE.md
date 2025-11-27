@@ -6,11 +6,14 @@ This guide explains how to manage AWS costs during development by stopping servi
 
 ## Cost-Bearing Services
 
+**Note**: Telephony costs: Twilio phone numbers and call minute pricing apply. See `docs/twilio-costs.md` for detailed breakdown. Estimated MVP cost: < ₹500/month.
+
 ### High Cost Services (Stop These First)
 1. **NAT Gateways**: ~$32/month each (even when idle) - **DELETE when not needed**
 2. **RDS Instances**: ~$50-200/month depending on instance type
 3. **EC2 GPU Instances**: ~$100-500/month depending on instance type
 4. **EC2 Regular Instances**: ~$15-50/month
+5. **Twilio Phone Numbers**: ~$1/month each (can be released when not needed)
 
 ### Low/No Cost Services (Can Leave Running)
 - **S3 Buckets**: Only pay for storage (~$0.023/GB/month)
@@ -20,6 +23,7 @@ This guide explains how to manage AWS costs during development by stopping servi
 - **ECR**: Only pay for storage (~$0.10/GB/month)
 - **Secrets Manager**: ~$0.40/secret/month
 - **CloudWatch Logs**: ~$0.50/GB ingested
+- **Twilio Account**: No monthly fee (pay-per-use for calls)
 
 ## Quick Stop/Start Scripts
 
@@ -33,6 +37,7 @@ This will:
 - Scale ECS services to 0
 - Stop RDS instances (if supported)
 - Delete NAT Gateways (saves ~$32/month each)
+- Note: Twilio phone numbers can be released when not needed to save costs
 
 ### Start All Services
 ```powershell

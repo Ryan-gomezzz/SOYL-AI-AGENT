@@ -129,6 +129,43 @@ CREATE TABLE llm_results (
 );
 ```
 
+## Telephony Layer — Decision Update (Twilio)
+
+We will use **Twilio Voice** as our telephony/contact center platform. Amazon Connect was evaluated but cannot be used because our AWS account is provisioned by AISPL (Amazon Internet Services Private Limited), and AISPL accounts are not permitted to create Amazon Connect instances due to region/reseller/telephony regulatory restrictions. Twilio provides a global, webhook-driven telephony API that integrates directly with our AWS backend (API Gateway + Lambda), requires no special account conversion, and supports both inbound and outbound voice, recording, and real-time audio streaming via WebSockets if needed.
+
+### Key Points
+
+- **Telephony Provider**: Twilio Voice (phone numbers provisioned via Twilio Console or REST API)
+- **Webhook Model**: Twilio → HTTP(S) webhook → API Gateway → Lambda → AI Engine (VAPI) → Response (TwiML or outbound audio)
+- **Recordings & Transcripts**: Stored in S3; logs in CloudWatch
+- **CI/CD**: Twilio webhook URL will be registered during deployment using `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` secrets
+
+### Twilio Integration Architecture
+
+```
+[Caller / PSTN] <---> Twilio Phone Number
+                     |
+                     | Twilio Webhook (HTTP POST)
+                     |
+                     ▼
+              API Gateway (HTTPS)
+                     |
+                     ▼
+            Lambda (twilio-webhook)
+                     |
+        [Auth/Sign-check | Parse | Business logic]
+                     |
+            -> AI Agent (VAPI or in-house model) <-- optional DB
+                     |
+            Return TwiML or stream audio
+                     |
+                  Twilio (plays audio / connects call)
+                     |
+        (Recordings -> S3 ; Logs -> CloudWatch)
+```
+
+**Note**: Amazon Connect evaluation aborted due to AISPL account restrictions; replaced by Twilio Voice.
+
 ## Call Flow
 
 ### 1. Enquiry Submission Flow
@@ -143,12 +180,48 @@ User → API Gateway → Lambda → RDS (save enquiry)
                          Initiate Call
 ```
 
-### 2. Call Processing Flow
+### 2. Inbound Call Flow (Twilio)
 
 ```
-Call Initiated → Recording Started
+Caller dials Twilio number
      ↓
-Recording Saved to S3 (recordings bucket)
+Twilio posts call event to POST /twilio/webhook
+     ↓
+API Gateway receives request and invokes twilio-webhook Lambda
+     ↓
+Lambda verifies X-Twilio-Signature, parses caller/call SID
+     ↓
+Lambda calls AI agent (VAPI or internal endpoint) for response
+     ↓
+Lambda returns TwiML (play text-to-speech, gather DTMF, record)
+     ↓
+Twilio executes TwiML and plays audio/connects call
+     ↓
+Twilio uploads recordings to S3 (via webhook)
+     ↓
+Recording events trigger Lambda → Store in RDS
+     ↓
+Worker processes recording → Transcription → LLM → Email
+```
+
+### 3. Outbound Call Flow (Twilio)
+
+```
+Backend requests Twilio to create outbound call via REST API
+     ↓
+Twilio calls the answerUrl webhook when called party answers
+     ↓
+Webhook points to same Lambda pipeline
+     ↓
+Lambda returns TwiML that connects to AI engine/plays TTS
+     ↓
+Call recording and processing follows same flow as inbound
+```
+
+### 4. Call Processing Flow (Post-Call)
+
+```
+Call Recording → S3 (recordings bucket)
      ↓
 Worker Service Processes Recording
      ↓
@@ -167,7 +240,7 @@ LLM Result Saved to RDS
 Confirmation Email Sent via SES
 ```
 
-### 3. Data Flow Diagram (Text)
+### 5. Data Flow Diagram (Text)
 
 ```
 ┌──────────┐

@@ -1,16 +1,27 @@
 /**
  * Dashboard Page
  * 
- * Professional CRM dashboard for managing leads
+ * Professional CRM dashboard with tabs for:
+ * - Leads management
+ * - Transcripts display
+ * - Call status tracking
+ * - Summary display
  */
 
 import { useState, useEffect } from 'react';
 import { getLeads } from '../api/leads';
+import TranscriptsList from '../components/TranscriptsList';
+import CallStatus from '../components/CallStatus';
+import SummaryCard, { SummaryList } from '../components/SummaryCard';
 
 function Dashboard() {
+  // Tab state
+  const [activeTab, setActiveTab] = useState('leads');
+  
+  // Leads state
   const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [leadsLoading, setLeadsLoading] = useState(true);
+  const [leadsError, setLeadsError] = useState(null);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 50,
@@ -43,10 +54,18 @@ function Dashboard() {
     { value: 'direct', label: 'Direct' },
   ];
 
+  // Tabs configuration
+  const tabs = [
+    { id: 'leads', name: 'Leads', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
+    { id: 'transcripts', name: 'Transcripts', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+    { id: 'calls', name: 'Call Status', icon: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z' },
+    { id: 'summary', name: 'Summaries', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+  ];
+
   // Fetch leads
   const fetchLeads = async () => {
-    setLoading(true);
-    setError(null);
+    setLeadsLoading(true);
+    setLeadsError(null);
 
     try {
       const options = {
@@ -62,19 +81,23 @@ function Dashboard() {
       setLeads(data.leads || []);
       setPagination(data.pagination || pagination);
     } catch (err) {
-      setError(err.message || 'Failed to load leads');
+      setLeadsError(err.message || 'Failed to load leads');
       console.error('Error fetching leads:', err);
     } finally {
-      setLoading(false);
+      setLeadsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchLeads();
-  }, [currentPage, statusFilter, sourceFilter]);
+    if (activeTab === 'leads') {
+      fetchLeads();
+    }
+  }, [currentPage, statusFilter, sourceFilter, activeTab]);
 
   // Handle search with debounce
   useEffect(() => {
+    if (activeTab !== 'leads') return;
+    
     const timer = setTimeout(() => {
       if (currentPage === 1) {
         fetchLeads();
@@ -84,7 +107,7 @@ function Dashboard() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, activeTab]);
 
   // Format date
   const formatDate = (dateString) => {
@@ -119,16 +142,35 @@ function Dashboard() {
     }
   };
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Leads Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Manage and track all your leads in one place
-        </p>
-      </div>
+  // Render tab content
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'leads':
+        return renderLeadsTab();
+      case 'transcripts':
+        return <TranscriptsList />;
+      case 'calls':
+        return <CallStatus />;
+      case 'summary':
+        return (
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Call Summaries</h3>
+              <p className="text-sm text-gray-500">
+                LLM-generated summaries will appear here after calls are processed. Summaries are generated in Week 3.
+              </p>
+            </div>
+            <SummaryList summaries={[]} />
+          </div>
+        );
+      default:
+        return renderLeadsTab();
+    }
+  };
 
+  // Render leads tab
+  const renderLeadsTab = () => (
+    <>
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -195,30 +237,20 @@ function Dashboard() {
 
       {/* Leads Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        {loading ? (
+        {leadsLoading ? (
           <div className="p-12 text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
             <p className="mt-4 text-sm text-gray-500">Loading leads...</p>
           </div>
-        ) : error ? (
+        ) : leadsError ? (
           <div className="p-12 text-center">
             <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-              <svg
-                className="h-6 w-6 text-red-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
+              <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <h3 className="mt-4 text-sm font-medium text-gray-900">Error loading leads</h3>
-            <p className="mt-2 text-sm text-gray-500">{error}</p>
+            <p className="mt-2 text-sm text-gray-500">{leadsError}</p>
             <button
               onClick={fetchLeads}
               className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
@@ -228,18 +260,8 @@ function Dashboard() {
           </div>
         ) : leads.length === 0 ? (
           <div className="p-12 text-center">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
+            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <h3 className="mt-4 text-sm font-medium text-gray-900">No leads found</h3>
             <p className="mt-2 text-sm text-gray-500">
@@ -400,7 +422,7 @@ function Dashboard() {
       </div>
 
       {/* Stats Summary */}
-      {!loading && !error && leads.length > 0 && (
+      {!leadsLoading && !leadsError && leads.length > 0 && (
         <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="text-sm font-medium text-gray-500">Total Leads</div>
@@ -426,9 +448,57 @@ function Dashboard() {
           </div>
         </div>
       )}
+    </>
+  );
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Manage leads, view transcripts, track calls, and review summaries
+        </p>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm
+                  ${isActive
+                    ? 'border-indigo-500 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }
+                `}
+              >
+                <svg
+                  className={`-ml-0.5 mr-2 h-5 w-5 ${isActive ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-500'}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+                </svg>
+                {tab.name}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      <div className="mt-6">
+        {renderTabContent()}
+      </div>
     </div>
   );
 }
 
 export default Dashboard;
-
